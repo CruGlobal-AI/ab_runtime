@@ -1,10 +1,18 @@
-[![GitHub release](https://img.shields.io/github/downloads-pre/CruGlobal/ab_runtime/latest/total?label=Version)](https://github.com/CruGlobal/ab_runtime/releases)
+[![GitHub release](https://img.shields.io/github/downloads-pre/CruGlobal-AI/ab_runtime/latest/total?label=Version)](https://github.com/CruGlobal-AI/ab_runtime/releases)
 
 
 The server side runtime for our AppBuilder project.
 
+## CruGlobal-AI fork
+This is the CruGlobal-AI fork of [CruGlobal/ab_runtime](https://github.com/CruGlobal/ab_runtime), part of a full AppBuilder stack set up for agent-driven work.
+
+- Code: every AB repo is forked into [CruGlobal-AI](https://github.com/CruGlobal-AI). `ab-cli` clones from there by default (`AB_GITHUB_ORG`).
+- Images: `ghcr.io/cruglobal-ai/ab-*`, built by each service's CI through [ab-workflows](https://github.com/CruGlobal-AI/ab-workflows). The helper scripts read `AB_IMAGE_REGISTRY` (default `ghcr.io/cruglobal-ai`).
+- Base image: `ghcr.io/cruglobal-ai/service-cli` from [service-cli](https://github.com/CruGlobal-AI/service-cli).
+- Upstream sync: fetch `CruGlobal/ab_runtime` and merge into a branch, then PR.
+
 ## Installation
-Use [ab-cli](https://github.com/CruGlobal/ab-cli) tool.
+Use [ab-cli](https://github.com/CruGlobal-AI/ab-cli) tool.
 
 ## Starting
 Run `./UP.sh` to bring up the Docker Stack. Options:

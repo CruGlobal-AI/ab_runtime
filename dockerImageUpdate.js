@@ -18,6 +18,10 @@ const migrationContainer = "update_script_db_migrations"; // ref to clean up the
 
 const stack = process.env.STACKNAME;
 const platform = process.env.PLATFORM === "podman" ? "podman" : "docker";
+// Image registry for AppBuilder images (CruGlobal-AI fork default)
+const registry = (
+   process.env.AB_IMAGE_REGISTRY || "ghcr.io/cruglobal-ai"
+).replace(/\/+$/, "");
 
 // const hashServices = {};
 // {hash}  { imagetag : {serviceData} }
@@ -57,7 +61,7 @@ async function updateVersion() {
    Object.keys(version.services).forEach((service) => {
       const tag = version.services[service];
       // Image to pull
-      images.push(`digiserve/ab-${service.replace(/_/g, "-")}:${tag}`);
+      images.push(`${registry}/ab-${service.replace(/_/g, "-")}:${tag}`);
       // Update the process env
       const envVar = `AB_${service.toUpperCase()}_VERSION`;
       process.env[envVar] = tag;
@@ -100,7 +104,7 @@ function runCommand(command) {
  */
 async function dbMigrate(branch) {
    const response = await runCommand(
-      `${platform} run --env-file .env --network=${stack}_default --name=${migrationContainer} digiserve/ab-migration-manager:${branch} node app.js`
+      `${platform} run --env-file .env --network=${stack}_default --name=${migrationContainer} ${registry}/ab-migration-manager:${branch} node app.js`
    );
 
    return response;
@@ -254,7 +258,7 @@ async function Do() {
       //       if (!branchMigrate) branchMigrate = "master";
       //    }
       // }
-      images.unshift(`digiserve/ab-migration-manager:${branchMigrate}`);
+      images.unshift(`${registry}/ab-migration-manager:${branchMigrate}`);
 
       await processHandler("Updating Images", updateImage, images);
 
