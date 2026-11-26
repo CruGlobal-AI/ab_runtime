@@ -10,6 +10,9 @@ set -o allexport
 source .env
 set +o allexport
 
+# Image registry for AppBuilder images (CruGlobal-AI fork default)
+AB_IMAGE_REGISTRY="${AB_IMAGE_REGISTRY:-ghcr.io/cruglobal-ai}"
+
 migrationContainer="update_script_db_migrations" # ref for cleaning up the migration container
 cmd=${PLATFORM:-"docker"}
 echo "Updating images for $cmd"
@@ -42,7 +45,7 @@ declare -A services="($(
 ))"
 
 branchMigrate=${AB_MIGRATION_MANAGER_VERSION:-"master"}
-images=("digiserve/ab-migration-manager:$branchMigrate")
+images=("${AB_IMAGE_REGISTRY}/ab-migration-manager:$branchMigrate")
 # Update env variables and prepare image list to pull later
 for service in "${!services[@]}";
 do
@@ -53,7 +56,7 @@ do
    # update .env file
    sed -i "s/^${SERVICE_VAR}=.*/${SERVICE_VAR}=${VERSION}/" ./.env
    # add dockerimage to our images array
-   images+=("docker.io/digiserve/ab-$(echo "$service" | tr "_" "-" ):$VERSION")
+   images+=("${AB_IMAGE_REGISTRY}/ab-$(echo "$service" | tr "_" "-" ):$VERSION")
 done
 
 # Pull images from dockerhub
@@ -65,7 +68,7 @@ done
 
 # Perform DB Migrations
 echo "DB Migrations:"
-eval "$cmd run --env-file .env --network=${STACKNAME}_default --name=$migrationContainer digiserve/ab-migration-manager:$branchMigrate node app.js"
+eval "$cmd run --env-file .env --network=${STACKNAME}_default --name=$migrationContainer ${AB_IMAGE_REGISTRY}/ab-migration-manager:$branchMigrate node app.js"
 eval "$cmd stop $migrationContainer"
 sleep 1;
 eval "$cmd rm $migrationContainer"
@@ -99,7 +102,7 @@ fi
 echo "Clean up old images"
 # Don't remove images that are currently running or ab-migration-manager:master
 # use Associative array to only get unique
-declare -A usedImages=(["digiserve/ab-migration-manager:${branchMigrate}"]="")
+declare -A usedImages=(["${AB_IMAGE_REGISTRY}/ab-migration-manager:${branchMigrate}"]="")
 eval "$($cmd ps --format "usedImages+=([\"{{.Image}}\"]=\"\");")"
 doNotRemove=""
 for used in ${!usedImages[@]}
