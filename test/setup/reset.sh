@@ -4,7 +4,10 @@ rm ./drop_all_tables.sql
 echo "SET FOREIGN_KEY_CHECKS = 0;" > ./drop_all_tables.sql
 
 ## PUll all our tables out of the dump:
-( mysqldump --add-drop-table --no-data -u $DB_USER -p$DB_PASSWORD "appbuilder-$TENANT" | grep 'DROP TABLE' ) >> ./drop_all_tables.sql
+## Keep SITE_PLUGIN and SITE_PLUGIN_LINK. They come from a migration patch
+## (ab_migration_manager 20261111.sql), not from the ab-db init SQL that gets
+## reloaded below, so dropping them leaves the services with a missing table.
+( mysqldump --add-drop-table --no-data -u $DB_USER -p$DB_PASSWORD "appbuilder-$TENANT" | grep 'DROP TABLE' | grep -v -E '`SITE_PLUGIN(_LINK)?`' ) >> ./drop_all_tables.sql
 
 ## Remove all our remaining Views as well:
 echo \
