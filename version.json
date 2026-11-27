@@ -12,7 +12,7 @@
       "process_manager": "1.2.32_p11500",
       "relay": "2.0.0",
       "tenant_manager": "1.2.4",
-      "user_manager": "1.2.32_p11500",
+      "user_manager": "1.2.33_p11501",
       "web": "2.1.3_d11900.p12800.c22001"
    },
    "version": "2.4.5"
