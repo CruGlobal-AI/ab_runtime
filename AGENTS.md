@@ -11,6 +11,33 @@ Notes for AI coding agents (Claude Code, Cursor, Codex, etc.) working in this re
 - Both stacks bind the web UI to `$WEB_PORT` (8881), so run only one at a time.
 - Cypress E2E suite lives in `test/e2e/`. See the scripts in `package.json`.
 
+## Frontend builds in the dev/test stack
+
+The `web` (nginx) service bind-mounts `developer/web/assets` to `/app/assets` and
+`developer/plugins` to `/app/assets/ab_plugins`. Rebuild on the host; no restart needed,
+just reload the browser.
+
+| Code | Rebuild | Output |
+| ---- | ------- | ------ |
+| `developer/ab_platform_web` (web UI, designer preview classes) | `npm run build:dev` (or `watch`) | `developer/web/assets/AB.*.js` |
+| `developer/plugins/ABDesigner` | `npm run build:dev` (or `watch`) | `developer/web/assets/tenant/default/ABDesigner.js` |
+| `developer/appbuilder_platform_pwa` (PWA at `/mobile/app/...`) | `npm run build` (or `watch`); `build:dev` also inits submodules | `developer/web/assets/mobile/mobile_*.js` |
+
+These builds overwrite the prebuilt files tracked in `developer/web`, so `git status` there
+shows them as changed. Don't commit those.
+
+### Adding a mobile (PWA) widget touches 4 layers
+
+1. `appbuilder_class_core`: `ABMobileView<Name>Core` + register it in `ABViewManagerMobileCore`.
+2. `ab_platform_web`: `platform/mobile/ABMobileView<Name>.js` (the designer preview uses it).
+3. `appbuilder_platform_pwa`: the runtime widget the phone renders.
+4. `plugins/ABDesigner`: the property editor for the widget.
+
+The PWA pins class_core on the `importOnly` branch (CJS `require`), not `v2` (ESM `import`).
+Those lines are far apart, so a core change for the PWA needs a second commit on `importOnly`.
+Services also pin their own class_core (in `ab_platform_service`), so add the platform class
+there before any service bumps core past the change.
+
 ## Running E2E tests from the shell
 
 ```sh
