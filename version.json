@@ -5,7 +5,7 @@
       "db": "1.0.1",
       "custom_reports": "1.1.31_p11424",
       "definition_manager": "1.5.8_p11501",
-      "file_processor": "1.2.21_p11500",
+      "file_processor": "1.2.22_p11501",
       "log_manager": "1.2.4",
       "mcp_server": "master",
       "notification_email": "1.2.1",
