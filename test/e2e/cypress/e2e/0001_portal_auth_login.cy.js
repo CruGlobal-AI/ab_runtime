@@ -1,8 +1,16 @@
 // Don't stop tests on uncaught errors
 Cypress.on("uncaught:exception", () => false);
 
-const USER_EMAIL = Cypress.env("USER_EMAIL");
-const USER_PASSWORD = Cypress.env("USER_PASSWORD");
+const USER_EMAIL = Cypress.expose("USER_EMAIL");
+let USER_PASSWORD;
+
+// Cypress 16: secrets come from cy.env(), which is a command, so load it
+// in a root hook before any test uses it.
+before(() => {
+   cy.env(["USER_PASSWORD"], { log: false }).then((env) => {
+      USER_PASSWORD = env.USER_PASSWORD;
+   });
+});
 
 describe("Login Page", () => {
    before(() => {
@@ -61,7 +69,7 @@ describe("Reset Password", () => {
       // Login to get token - don't use cy.AuthLogin since we won't reuse this
       // session
       cy.request("POST", "/auth/login", {
-         tenant: Cypress.env("TENANT"),
+         tenant: Cypress.expose("TENANT"),
          email: USER_EMAIL,
          password: USER_PASSWORD,
       })
