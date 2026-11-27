@@ -28,7 +28,6 @@ jobs:
         with:
           repository: ${{ github.repository_owner }}/kitchensink_app
           path: ab/test/e2e/cypress/e2e/kitchensink_app
-          ref: cypress-16-readfile # TEMP: test kitchensink_app#2, revert before merge
 
       - name: Deploy Stack
         run: ./UP.sh -t -q
