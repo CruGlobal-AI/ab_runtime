@@ -9,7 +9,7 @@
       "log_manager": "1.2.4",
       "mcp_server": "master",
       "notification_email": "1.2.1",
-      "process_manager": "1.2.30_p11424",
+      "process_manager": "1.2.32_p11500",
       "relay": "2.0.0",
       "tenant_manager": "1.2.4",
       "user_manager": "1.2.32_p11500",
