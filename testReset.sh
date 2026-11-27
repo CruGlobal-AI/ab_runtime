@@ -1,6 +1,9 @@
 #!/bin/bash
-STACK=${1}
-STACK=${STACK:=test_ab}
+# Stack name: first arg, else CYPRESS_STACK from .env, else test_ab
+if [ -f .env ]; then
+	CYPRESS_STACK=${CYPRESS_STACK:-$(grep -E '^CYPRESS_STACK=' .env | tail -1 | cut -d= -f2-)}
+fi
+STACK=${1:-${CYPRESS_STACK:-test_ab}}
 
 # Image registry for AppBuilder images (CruGlobal-AI fork default)
 AB_IMAGE_REGISTRY="${AB_IMAGE_REGISTRY:-ghcr.io/cruglobal-ai}"

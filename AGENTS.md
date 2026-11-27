@@ -23,6 +23,16 @@ npm run test:down
 
 Other configs: `test:e2e:app`, `test:e2e:ab-runtime`, `test:e2e:ab-designer`.
 
+## Writing specs (Cypress 16)
+
+Cypress 16 removed `Cypress.env()` and `cy.exec()`. Use:
+
+- `Cypress.expose("TENANT" | "STACK" | "USER_EMAIL")` for non-secret values (set in `expose` in `test/e2e/cypress.config.mjs`).
+- `cy.env(["USER_PASSWORD"], { log: false }).then(({ USER_PASSWORD }) => ...)` for secrets (`USER_PASSWORD`, `DB_USER`, `DB_PASSWORD`). It is a command, so read it inside a hook or test, not at file top level.
+- `shell(cmd, { failOnNonZeroExit, log, timeout })` in `support/commands.js` instead of `cy.exec()`. It runs the `shell` task (`bash -c` from `test/e2e`).
+
+All values come from the `CYPRESS_*` vars in `.env`. `npm run test:reset` with no argument resets `$CYPRESS_STACK`.
+
 ## MCP servers for browser testing
 
 `.mcp.json` registers two project MCP servers. Claude Code asks you to approve

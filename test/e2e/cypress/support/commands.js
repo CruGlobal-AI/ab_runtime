@@ -24,16 +24,39 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
+/**
+ * shell(cmd, { failOnNonZeroExit = true, log = true, timeout })
+ * Cypress 16 replacement for cy.exec(): runs `cmd` with the "shell" task
+ * (cypress.config.mjs) and yields { code, stdout, stderr }.
+ */
+function shell(cmd, options = {}) {
+   const { failOnNonZeroExit = true, log = true, timeout = 60000 } = options;
+   if (log) cy.log(`shell: ${cmd}`);
+   return cy.task("shell", cmd, { log: false, timeout }).then((result) => {
+      if (failOnNonZeroExit && result.code !== 0) {
+         throw new Error(
+            `shell command failed (exit ${result.code}): ${
+               log ? cmd : "(hidden)"
+            }\n${result.stderr}`,
+         );
+      }
+      return result;
+   });
+}
+
 Cypress.Commands.add("AuthLogin", () => {
    cy.session("admin", () => {
-      cy.log(`Logging in as ${Cypress.env("USER_EMAIL")}`);
-      cy.request("POST", "/auth/login", {
-         tenant: Cypress.env("TENANT"),
-         email: Cypress.env("USER_EMAIL"),
-         password: Cypress.env("USER_PASSWORD"),
-      })
-         .its("body")
-         .as("currentUser");
+      const email = Cypress.expose("USER_EMAIL");
+      cy.log(`Logging in as ${email}`);
+      cy.env(["USER_PASSWORD"], { log: false }).then(({ USER_PASSWORD }) => {
+         cy.request("POST", "/auth/login", {
+            tenant: Cypress.expose("TENANT"),
+            email,
+            password: USER_PASSWORD,
+         })
+            .its("body")
+            .as("currentUser");
+      });
    });
 });
 
@@ -115,27 +138,30 @@ Cypress.Commands.add("ModelUpdate", (idModel, idRow, data) => {
 });
 
 Cypress.Commands.add("ResetDB", () => {
-   const stack = Cypress.env("STACK");
+   const stack = Cypress.expose("STACK");
 
    // Clear Cypress saved sessions since DB is being wiped
    Cypress.session.clearAllSavedSessions();
 
    // Clear the Physical DB
-   cy.exec(`ls`, { failOnNonZeroExit: false });
-   cy.exec(`npm run test:reset ${stack}`, { failOnNonZeroExit: false });
+   shell(`ls`, { failOnNonZeroExit: false });
+   shell(`npm run test:reset ${stack}`, {
+      failOnNonZeroExit: false,
+      timeout: 300000,
+   });
 
    // Have the running services clear their definitions.
-   cy.request("POST", "/test/reset", { tenant: Cypress.env("TENANT") });
+   cy.request("POST", "/test/reset", { tenant: Cypress.expose("TENANT") });
 });
 
 Cypress.Commands.add("RunSQL", (folder, files, fail = true) => {
-   const stack = Cypress.env("STACK");
+   const stack = Cypress.expose("STACK");
    if (typeof files === "string") {
       files = [files];
    }
 
    const regEx = /^\S+/;
-   cy.exec(`docker ps | grep ${stack}_db`, { failOnNonZeroExit: false }).then(
+   shell(`docker ps | grep ${stack}_db`, { failOnNonZeroExit: false }).then(
       ({ code, stdout, stderr }) => {
          cy.log(`docker ps | grep ${stack}_db → exit ${code}`);
          cy.log(stdout || "(no stdout)");
@@ -143,41 +169,45 @@ Cypress.Commands.add("RunSQL", (folder, files, fail = true) => {
       },
    );
 
-   cy.exec(`docker ps | grep ${stack}_db`).then(({ stdout }) => {
+   shell(`docker ps | grep ${stack}_db`).then(({ stdout }) => {
       if (!regEx.test(stdout)) {
          throw new Error(`couldn't find process matching '${stack}_db'`);
       }
       const containerId = stdout.match(regEx)[0];
 
-      const user = Cypress.env("DB_USER");
-      const password = Cypress.env("DB_PASSWORD");
+      cy.env(["DB_USER", "DB_PASSWORD"], { log: false }).then(
+         ({ DB_USER: user, DB_PASSWORD: password }) => {
+            let catCmd = "cat ";
+            files.forEach((file) => {
+               const path = `./cypress/e2e/${folder}/test_setup/sql/${file} `;
+               catCmd += path;
+            });
+            catCmd += `> ./cypress/e2e/${folder}/test_setup/sql/combineSql.sql`;
+            shell(catCmd);
+            shell(`docker exec ${containerId} mkdir -p /sql`);
+            shell(
+               `docker cp ./cypress/e2e/${folder}/test_setup/sql/combineSql.sql ${containerId}:/sql/combineSql.sql`,
+               {
+                  log: false,
+               },
+            );
 
-      let catCmd = "cat ";
-      files.forEach((file) => {
-         const path = `./cypress/e2e/${folder}/test_setup/sql/${file} `;
-         catCmd += path;
-      });
-      catCmd += `> ./cypress/e2e/${folder}/test_setup/sql/combineSql.sql`;
-      cy.exec(catCmd);
-      cy.exec(`docker exec ${containerId} mkdir -p /sql`);
-      cy.exec(
-         `docker cp ./cypress/e2e/${folder}/test_setup/sql/combineSql.sql ${containerId}:/sql/combineSql.sql`,
-         {
-            log: false,
+            shell(
+               /* eslint-disable no-useless-escape*/
+               `docker exec ${containerId} bash -c "mysql -u ${user} -p${password} \"appbuilder-admin\" < ./sql/combineSql.sql"`,
+               { failOnNonZeroExit: fail },
+            );
+            shell(
+               `docker exec ${containerId} bash -c "rm ./sql/combineSql.sql"`,
+               {
+                  log: false,
+               },
+            );
+            shell(`rm ./cypress/e2e/${folder}/test_setup/sql/combineSql.sql`, {
+               log: false,
+            });
          },
       );
-
-      cy.exec(
-         /* eslint-disable no-useless-escape*/
-         `docker exec ${containerId} bash -c "mysql -u ${user} -p${password} \"appbuilder-admin\" < ./sql/combineSql.sql"`,
-         { failOnNonZeroExit: fail },
-      );
-      cy.exec(`docker exec ${containerId} bash -c "rm ./sql/combineSql.sql"`, {
-         log: false,
-      });
-      cy.exec(`rm ./cypress/e2e/${folder}/test_setup/sql/combineSql.sql`, {
-         log: false,
-      });
    });
 });
 
@@ -188,7 +218,7 @@ Cypress.Commands.add("TestLog", (log) => {
 
 Cypress.Commands.add("VersionCheck", () => {
    // have our Services report back their current versions.
-   cy.request("GET", "/versioncheck", { tenant: Cypress.env("TENANT") });
+   cy.request("GET", "/versioncheck", { tenant: Cypress.expose("TENANT") });
 });
 
 /*
