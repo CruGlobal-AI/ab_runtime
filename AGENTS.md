@@ -26,6 +26,12 @@ just reload the browser.
 These builds overwrite the prebuilt files tracked in `developer/web`, so `git status` there
 shows them as changed. Don't commit those.
 
+nginx serves `<file>.js.gz` when it exists (`gzip_static`), and `build:dev` does not rewrite
+the tracked `.gz` files. After rebuilding ABDesigner, run
+`gzip -kf developer/web/assets/tenant/default/ABDesigner.js`, or the browser keeps getting the
+old bundle. Find other stale ones with `find developer/web/assets -name '*.js.gz'` and compare
+mtimes with the `.js` next to them.
+
 ### Adding a mobile (PWA) widget touches 4 layers
 
 1. `appbuilder_class_core`: `ABMobileView<Name>Core` + register it in `ABViewManagerMobileCore`.
