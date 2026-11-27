@@ -22,7 +22,7 @@ jobs:
       new_version: ${{ steps.increment_version.outputs.new_version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
 
@@ -30,7 +30,7 @@ jobs:
         run: npm i semver
 
       - name: Increment the Runtime Version
-        uses: actions/github-script@v6
+        uses: actions/github-script@v8
         id: increment_version
         env:
           TYPE: ${{ inputs.type }}
