@@ -1,25 +1,30 @@
 {
    "devDependencies": {
       "@eslint/js": "^10.0.1",
+      "@modelcontextprotocol/sdk": "^1.32.2",
       "cypress": "^16.4.0",
       "env-cmd": "^10.1.0",
       "eslint": "^10.1.0",
       "eslint-config-prettier": "^10.1.8",
       "eslint-plugin-cypress": "^6.2.1",
       "eslint-plugin-prettier": "^5.5.5",
-      "globals": "^16.0.0"
+      "globals": "^16.0.0",
+      "zod": "^4.6.7"
    },
    "dependencies": {
-      "@digiserve/ab-utils": "github:CruGlobal-AI/ab-utils#1.10.3",
+      "@digiserve/ab-utils": "github:CruGlobal-AI/ab-utils#1.11.1",
       "@slack/bolt": "^3.17.1",
       "async": "^3.2.4",
       "dotenv": "^16.0.3",
-      "semver": "^7.8.6",
+      "semver": "^7.8.5",
       "shelljs": "^0.10.0"
    },
    "scripts": {
       "update": "./Update.sh",
       "cypress:open": "env-cmd cypress open --project ./test/e2e",
+      "cypress:install": "cypress install",
+      "mcp:cypress": "node test/e2e/mcp/cypress-mcp.mjs",
+      "mcp:smoke": "node test/e2e/mcp/smoke.mjs",
       "test:boot": "./testUP.sh",
       "test:down": "./testDown.sh",
       "test:e2e": "env-cmd cypress run --reporter dot --project ./test/e2e",

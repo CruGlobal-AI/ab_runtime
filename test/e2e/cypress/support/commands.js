@@ -153,61 +153,52 @@ Cypress.Commands.add("ResetDB", () => {
    cy.request("POST", "/test/reset", { tenant: Cypress.expose("TENANT") });
 });
 
+// Exit codes the RunSQL script uses for setup errors. These always fail the
+// test, even when `fail` is false (that only covers SQL errors).
+const RUNSQL_NO_CONTAINER = 97;
+const RUNSQL_MISSING_FILE = 98;
+
+/**
+ * RunSQL(folder, files, fail = true)
+ * Pipes the given SQL files from cypress/e2e/<folder>/test_setup/sql/ into
+ * mysql in the <stack>_db container. One shell call, no temp files.
+ */
 Cypress.Commands.add("RunSQL", (folder, files, fail = true) => {
    const stack = Cypress.expose("STACK");
    if (typeof files === "string") {
       files = [files];
    }
+   const paths = files
+      .map((file) => `./cypress/e2e/${folder}/test_setup/sql/${file}`)
+      .join(" ");
+   // single-quote for bash
+   const q = (v) => `'${String(v ?? "").replace(/'/g, `'\\''`)}'`;
 
-   const regEx = /^\S+/;
-   shell(`docker ps | grep ${stack}_db`, { failOnNonZeroExit: false }).then(
-      ({ code, stdout, stderr }) => {
-         cy.log(`docker ps | grep ${stack}_db → exit ${code}`);
-         cy.log(stdout || "(no stdout)");
-         if (stderr) cy.log(stderr);
+   cy.log(`RunSQL ${folder}: ${files.join(", ")}`);
+   cy.env(["DB_USER", "DB_PASSWORD"], { log: false }).then(
+      ({ DB_USER: user, DB_PASSWORD: password }) => {
+         const cmd = [
+            "set -o pipefail",
+            `for f in ${paths}; do [ -f "$f" ] || { echo "missing SQL file: $f" >&2; exit ${RUNSQL_MISSING_FILE}; }; done`,
+            `id=$(docker ps -qf name=${stack}_db | head -1)`,
+            `[ -n "$id" ] || { echo "couldn't find process matching '${stack}_db'" >&2; exit ${RUNSQL_NO_CONTAINER}; }`,
+            `cat ${paths} | docker exec -i -e MYSQL_PWD=${q(
+               password,
+            )} "$id" mysql -u ${q(user)} appbuilder-admin`,
+         ].join("\n");
+
+         shell(cmd, { failOnNonZeroExit: false, log: false }).then(
+            ({ code, stderr }) => {
+               const setupError =
+                  code === RUNSQL_NO_CONTAINER || code === RUNSQL_MISSING_FILE;
+               if (code !== 0 && (fail || setupError)) {
+                  throw new Error(`RunSQL failed (exit ${code}):\n${stderr}`);
+               }
+               if (code !== 0) cy.log(`RunSQL ignored error: ${stderr}`);
+            },
+         );
       },
    );
-
-   shell(`docker ps | grep ${stack}_db`).then(({ stdout }) => {
-      if (!regEx.test(stdout)) {
-         throw new Error(`couldn't find process matching '${stack}_db'`);
-      }
-      const containerId = stdout.match(regEx)[0];
-
-      cy.env(["DB_USER", "DB_PASSWORD"], { log: false }).then(
-         ({ DB_USER: user, DB_PASSWORD: password }) => {
-            let catCmd = "cat ";
-            files.forEach((file) => {
-               const path = `./cypress/e2e/${folder}/test_setup/sql/${file} `;
-               catCmd += path;
-            });
-            catCmd += `> ./cypress/e2e/${folder}/test_setup/sql/combineSql.sql`;
-            shell(catCmd);
-            shell(`docker exec ${containerId} mkdir -p /sql`);
-            shell(
-               `docker cp ./cypress/e2e/${folder}/test_setup/sql/combineSql.sql ${containerId}:/sql/combineSql.sql`,
-               {
-                  log: false,
-               },
-            );
-
-            shell(
-               /* eslint-disable no-useless-escape*/
-               `docker exec ${containerId} bash -c "mysql -u ${user} -p${password} \"appbuilder-admin\" < ./sql/combineSql.sql"`,
-               { failOnNonZeroExit: fail },
-            );
-            shell(
-               `docker exec ${containerId} bash -c "rm ./sql/combineSql.sql"`,
-               {
-                  log: false,
-               },
-            );
-            shell(`rm ./cypress/e2e/${folder}/test_setup/sql/combineSql.sql`, {
-               log: false,
-            });
-         },
-      );
-   });
 });
 
 Cypress.Commands.add("TestLog", (log) => {
