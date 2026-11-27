@@ -25,6 +25,16 @@ export default defineConfig({
    defaultCommandTimeout: 12000,
    responseTimeout: 60000,
    video: false,
+   // Cypress 16 sends Chrome traffic through the browser's own network stack.
+   // On CI (Chrome 157 headless) every cy.visit() then timed out waiting for
+   // the page load event. Use the legacy HTTP/1.1 proxy path until we know why.
+   // Deprecated in Cypress 16, so revisit before the next major.
+   forceHttp1: true,
+   // Cypress 16's 'modern' visibility check (checkVisibility()) broke 5
+   // kitchen-sink tests on webix widgets (multicombo [x], form save,
+   // process inbox) on two CI runs in a row. Keep the old algorithm for now.
+   // Deprecated in Cypress 16, same as forceHttp1.
+   visibilityStrategy: "legacy",
    expose,
    env,
    e2e: {
